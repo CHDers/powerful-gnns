@@ -8,7 +8,8 @@ from mlp import MLP
 
 
 class GraphCNN(nn.Module):
-    def __init__(self, num_layers, num_mlp_layers, input_dim, hidden_dim, output_dim, final_dropout, learn_eps, graph_pooling_type, neighbor_pooling_type, device):
+    def __init__(self, num_layers, num_mlp_layers, input_dim, hidden_dim, output_dim,
+                 final_dropout, learn_eps, graph_pooling_type, neighbor_pooling_type, device):
         '''
             num_layers: number of layers in the neural networks (INCLUDING the input layer)
             num_mlp_layers: number of layers in mlps (EXCLUDING the input layer)
@@ -16,7 +17,7 @@ class GraphCNN(nn.Module):
             hidden_dim: dimensionality of hidden units at ALL layers
             output_dim: number of classes for prediction
             final_dropout: dropout ratio on the final linear layer
-            learn_eps: If True, learn epsilon to distinguish center nodes from neighboring nodes. If False, aggregate neighbors and center nodes altogether. 
+            learn_eps: If True, learn epsilon to distinguish center nodes from neighboring nodes. If False, aggregate neighbors and center nodes altogether.
             neighbor_pooling_type: how to aggregate neighbors (mean, average, or max)
             graph_pooling_type: how to aggregate entire nodes in a graph (mean, average)
             device: which device to use

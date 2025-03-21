@@ -1,5 +1,6 @@
 import argparse
 import torch
+import os
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -82,8 +83,6 @@ def test(args, model, device, train_graphs, test_graphs):
     correct = pred.eq(labels.view_as(pred)).sum().cpu().item()
     acc_test = correct / float(len(test_graphs))
 
-    # print("accuracy train: %f test: %f" % (acc_train, acc_test))
-
     return acc_train, acc_test
 
 
@@ -100,7 +99,7 @@ def main():
                         help='input batch size for training (default: 32)')
     parser.add_argument('--iters_per_epoch', type=int, default=50,
                         help='number of iterations per each epoch (default: 50)')
-    parser.add_argument('--epochs', type=int, default=350,
+    parser.add_argument('--epochs', type=int, default=200,
                         help='number of epochs to train (default: 350)')
     parser.add_argument('--lr', type=float, default=0.01,
                         help='learning rate (default: 0.01)')
@@ -124,17 +123,17 @@ def main():
                         help='Whether to learn the epsilon weighting for the center nodes. Does not affect training accuracy though.')
     parser.add_argument('--degree_as_tag', action="store_true",
                         help='let the input node features be the degree of nodes (heuristics for unlabeled graph)')
-    parser.add_argument('--filename', type=str, default="",
+    parser.add_argument('--filename', type=str, default="./train_info.txt",
                         help='output file')
     args = parser.parse_args()
 
     # set up seeds and gpu device
-    torch.manual_seed(0)
-    np.random.seed(0)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     device = torch.device("cuda:" + str(args.device)
                           ) if torch.cuda.is_available() else torch.device("cpu")
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(0)
+        torch.cuda.manual_seed_all(args.seed)
 
     graphs, num_classes = load_data(args.dataset, args.degree_as_tag)
 
@@ -143,18 +142,27 @@ def main():
 
     model = GraphCNN(args.num_layers, args.num_mlp_layers, train_graphs[0].node_features.shape[1], args.hidden_dim, num_classes,
                      args.final_dropout, args.learn_eps, args.graph_pooling_type, args.neighbor_pooling_type, device).to(device)
+    print(model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 
-    for epoch in tqdm(range(1, args.epochs + 1), desc='Epoch', colour='green'):
+    # 如果文件存在且不为空，则删除文件
+    if args.filename and os.path.exists(args.filename) and os.stat(args.filename).st_size > 0:
+        os.remove(args.filename)
+
+    # 创建新文件并写入列名
+    if args.filename:
+        with open(args.filename, 'w') as f:
+            f.write("Avg_Loss,Train_Accuracy,Test_Accuracy\n")  # 写入列名
+
+    for _ in tqdm(range(1, args.epochs + 1), desc='Epoch', colour='green'):
         avg_loss = train(args, model, device, train_graphs, optimizer, scheduler)
         acc_train, acc_test = test(args, model, device, train_graphs, test_graphs)
 
         if not args.filename == "":
-            with open(args.filename, 'w') as f:
-                f.write("%f %f %f" % (avg_loss, acc_train, acc_test))
-                f.write("\n")
+            with open(args.filename, 'a') as f:  # 使用 'a' 模式追加内容
+                f.write("%f,%f,%f\n" % (avg_loss, acc_train, acc_test))  # 确保每条记录独占一行
 
 
 if __name__ == '__main__':

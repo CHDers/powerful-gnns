@@ -1,0 +1,1 @@
+Avg_Loss,Train_Accuracy,Test_Accuracy
